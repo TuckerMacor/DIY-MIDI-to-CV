@@ -12,6 +12,14 @@ https://github.com/FortySevenEffects/arduino_midi_library
 MCP DAC by Rob Tillaart
 https://github.com/RobTillaart/MCP_DAC
 
+# PCB
+
+PCB Files are in easyeda format at:
+
+https://oshwlab.com/tucker1/digital_copy
+
+I've also included Gerber files here
+
 # Schematic
 
 [Click to fullscreen](https://raw.githubusercontent.com/TuckerMacor/DIY-MIDI-to-CV/main/Schematic/DIY%20MIDI%20to%20CV%20Schematic.svg)
