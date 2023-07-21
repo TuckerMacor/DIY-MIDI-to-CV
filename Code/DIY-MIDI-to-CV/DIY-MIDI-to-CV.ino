@@ -93,6 +93,9 @@ bool channelGateMute[6] = { false, false, false, false, false, false };
 int displayValue[6] = { 0, 0, 0, 0, 0, 0 };
 int displayOctave[6] = { 0, 0, 0, 0, 0, 0 };
 int octaveShiftAmount[6] = { 0, 0, 0, 0, 0, 0 };
+int notesOn[6] = { 0, 0, 0, 0, 0, 0 };
+//int polyMode = 0;
+//byte gateOnNote[6] = { 0, 0, 0, 0, 0, 0 };
 
 int selectedChannel = 0;
 
@@ -136,6 +139,9 @@ void loop() {
       } else if (i == 8) {
         channelGateMute[selectedChannel] = !channelGateMute[selectedChannel];
         if (channelGateMute[selectedChannel]) {
+          notesOn[selectedChannel] = 0;
+          shiftOutStates[32 + selectedChannel] = LOW;
+          shiftStatesOut();
           interfaceState = 3;
         } else {
           interfaceState = 0;
@@ -211,6 +217,7 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) {
         displayOctave[i]--;
       }
       if (!channelGateMute[i]) {
+        notesOn[i]++;
         shiftOutStates[32 + i] = HIGH;
         shiftStatesOut();
       }
@@ -222,11 +229,17 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) {
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
   for (int i = 0; i < 6; i++) {
     if (listenChannel[i] == channel) {
-      shiftOutStates[32 + i] = LOW;
-      shiftStatesOut();
+      if (notesOn[i] > 0) {
+        notesOn[i]--;
+      }
+      if (notesOn[i] == 0) {
+        shiftOutStates[32 + i] = LOW;
+        shiftStatesOut();
+      }
     }
   }
 }
+
 
 
 void readButtons() {  //check if buttons got pressed
