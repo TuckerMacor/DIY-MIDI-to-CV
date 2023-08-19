@@ -16,7 +16,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 
 //DAC Stuff
 #define dacCount 6  // Number of DAC chips
-const int dacChipSelectPins[dacCount] = { 4, 5, 6, 7, 8, 9 };
+const int dacChipSelectPins[dacCount] = { 3, 4, 5, 6, 7, 8 };
 #include "MCP_DAC.h"
 MCP4922 dac[dacCount];
 
@@ -75,13 +75,13 @@ const boolean segmentNumbers[31][7] = {
 
 
 //buttons and trigger inputs
-#define buttonCount 12
+#define buttonCount 16
 bool buttonState[buttonCount];                //what state is the button at
 bool buttonWasPressed[buttonCount];           //was the button pressed
 bool lastButtonState[buttonCount];            //previous state of the button
 unsigned long lastDebounceTime[buttonCount];  //timestamp of debounce
 unsigned long debounceDelay = 30;             //how long to wait before a button is considered pressed
-const int ButtonGroupSelectPins[2] = { 2, 3 };
+const int ButtonGroupSelectPins[2] = { 2, 9 };
 
 const int noteLetters[12] = { 13, 13, 14, 14, 15, 16, 16, 17, 17, 11, 11, 12 };
 const int noteValues[128] = { -532, -489, -446, -403, -360, -317, -274, -231, -188, -145, -102, -59, -16, 26, 69, 112, 155, 198, 241, 284, 327, 370, 413, 456, 499, 542, 585, 628, 671, 714, 757, 800, 843, 886, 929, 972, 1015, 1058, 1101, 1144, 1187, 1230, 1273, 1316, 1359, 1402, 1445, 1488, 1531, 1574, 1617, 1661, 1704, 1747, 1790, 1833, 1876, 1919, 1962, 2005, 2048, 2091, 2133, 2176, 2219, 2261, 2304, 2347, 2389, 2432, 2475, 2517, 2560, 2603, 2645, 2688, 2731, 2773, 2816, 2859, 2901, 2944, 2987, 3029, 3072, 3115, 3157, 3200, 3243, 3285, 3328, 3371, 3413, 3456, 3499, 3541, 3584, 3627, 3669, 3712, 3755, 3797, 3840, 3883, 3925, 3968, 4011, 4053, 4095, 4138, 4181, 4224, 4266, 4309, 4352, 4394, 4437, 4480, 4522, 4565, 4608, 4650, 4693, 4736, 4778, 4821, 4864, 4906 };
@@ -118,7 +118,7 @@ void setup() {
   MIDI.setHandleNoteOff(handleNoteOff);
   MIDI.begin(MIDI_CHANNEL_OMNI);
 
-  //bootSequence();
+  bootSequence();
 }
 
 
@@ -130,13 +130,15 @@ void loop() {
   for (int i = 0; i < buttonCount; i++) {  //go through all buttons
     if (buttonWasPressed[i] == true) {     //if pressed
       buttonWasPressed[i] = false;
-      if (i < 6) {
-        selectedChannel = i;
-      } else if (i == 6) {
+      if (i == 6) {
+        selectedChannel = 0;
+      } else if (i > 7 && i < 13 ) {
+        selectedChannel = i - 7;
+      } else if (i == 0) {
         interfaceState = 1;
-      } else if (i == 7) {
+      } else if (i == 1) {
         interfaceState = 2;
-      } else if (i == 8) {
+      } else if (i == 2) {
         channelGateMute[selectedChannel] = !channelGateMute[selectedChannel];
         if (channelGateMute[selectedChannel]) {
           notesOn[selectedChannel] = 0;
@@ -146,15 +148,15 @@ void loop() {
         } else {
           interfaceState = 0;
         }
-      } else if (i == 9 && interfaceState == 1) {
+      } else if (i == 3 && interfaceState == 1) {
         listenChannel[selectedChannel]--;
-      } else if (i == 9 && interfaceState == 2) {
+      } else if (i == 3 && interfaceState == 2) {
         octaveShiftAmount[selectedChannel]--;
-      } else if (i == 10) {
+      } else if (i == 4) {
         interfaceState = 0;
-      } else if (i == 11 && interfaceState == 1) {
+      } else if (i == 5 && interfaceState == 1) {
         listenChannel[selectedChannel]++;
-      } else if (i == 11 && interfaceState == 2) {
+      } else if (i == 5 && interfaceState == 2) {
         octaveShiftAmount[selectedChannel]++;
       }
     }
@@ -199,13 +201,14 @@ void loop() {
 
 void handleNoteOn(byte channel, byte pitch, byte velocity) {
 
-  velocity = map(velocity, 0, 127, 0, 4095);
+  int velocityToDac = velocity;
+  velocityToDac = map(velocityToDac, 0, 127, 0, 4095);
 
   for (int i = 0; i < dacCount; i++) {
     if (listenChannel[i] == channel) {
       displayValue[i] = pitch + (octaveShiftAmount[i] * 12);
       dac[i].fastWriteA(noteValues[displayValue[i]]);
-      dac[i].fastWriteB(velocity);
+      dac[i].fastWriteB(velocityToDac);
 
       displayOctave[i] = 0;
       while (displayValue[i] > 11) {
@@ -246,17 +249,16 @@ void readButtons() {  //check if buttons got pressed
   bool buttonReadings[buttonCount];
   digitalWrite(ButtonGroupSelectPins[0], HIGH);
   shiftStatesIn();
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 8; i++) {
     buttonReadings[i] = shiftInStates[i];
   }
   digitalWrite(ButtonGroupSelectPins[0], LOW);
   digitalWrite(ButtonGroupSelectPins[1], HIGH);
   shiftStatesIn();
   digitalWrite(ButtonGroupSelectPins[1], LOW);
-  for (int i = 0; i < 6; i++) {
-    buttonReadings[i + 6] = shiftInStates[i];
+  for (int i = 0; i < 8; i++) {
+    buttonReadings[i + 8] = shiftInStates[i];
   }
-
   for (int i = 0; i < buttonCount; i++) {
     if (buttonReadings[i] != lastButtonState[i]) {
       lastDebounceTime[i] = millis();
